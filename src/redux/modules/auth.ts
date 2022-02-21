@@ -1,15 +1,9 @@
 import { push } from "react-router-redux";
 import { Action, createActions, handleActions } from "redux-actions";
-import { call, put, takeEvery } from "redux-saga/effects";
+import { call, put, select, takeEvery } from "redux-saga/effects";
 import TokenService from "../../service/TokenService";
-import { LoginReqType } from "../../types";
+import { AuthState, LoginReqType } from "../../types";
 import UserService from "./../../service/UserService";
-
-interface AuthState {
-  token: string | null;
-  loading: boolean;
-  error: Error | null;
-}
 
 const initialState: AuthState = {
   token: null,
@@ -65,7 +59,21 @@ function* loginSaga(action: Action<LoginReqType>) {
   }
 }
 
-function* logoutSaga(action: Action<LoginReqType>) {}
+function* logoutSaga(action: Action<LoginReqType>) {
+  try {
+    yield put(pending());
+
+    // business로직이랑 분리
+    const token: string = yield select((state) => state.auth.token);
+    yield call(UserService.logout, token);
+
+    TokenService.set(token);
+  } catch (error) {
+  } finally {
+    TokenService.remove();
+    yield put(success(null));
+  }
+}
 
 export function* authSaga() {
   yield takeEvery(`${prefix}/LOGIN`, loginSaga);
